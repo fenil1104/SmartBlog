@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Post - AI BlogPlatform{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Edit Blog Post</h1>
+            <p class="text-gray-600">Update your content with AI assistance</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <!-- Title -->
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-heading mr-1"></i>Title
+                </label>
+                <div class="flex space-x-2">
+                    <input type="text" id="title" name="title" required value="{{ post.title }}"
+                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                           placeholder="Enter your blog post title">
+                    <button type="button" onclick="suggestHeadlines()" 
+                            class="bg-accent text-white px-4 py-3 rounded-lg hover:bg-yellow-600 transition-colors">
+                        <i class="fas fa-robot mr-1"></i>AI Suggest
+                    </button>
+                </div>
+            </div>
+
+            <!-- Current Cover Image -->
+            {% if post.cover_image_url %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-image mr-1"></i>Current Cover Image
+                </label>
+                <img src="{{ post.cover_image_url }}" alt="Current cover" class="w-32 h-32 object-cover rounded-lg mb-2">
+            </div>
+            {% endif %}
+
+            <!-- Cover Image -->
+            <div>
+                <label for="cover_image" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-image mr-1"></i>{% if post.cover_image_url %}Update Cover Image{% else %}Cover Image{% endif %}
+                </label>
+                <input type="file" id="cover_image" name="cover_image" accept="image/*"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors">
+            </div>
+
+            <!-- Video URL -->
+            <div>
+                <label for="video_url" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-video mr-1"></i>Video URL (Optional)
+                </label>
+                <input type="url" id="video_url" name="video_url" value="{{ post.video_url or '' }}"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                       placeholder="https://youtube.com/watch?v=...">
+            </div>
+
+            <!-- Content Editor -->
+            <div>
+                <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-edit mr-1"></i>Content
+                </label>
+                
+                <!-- Editor Toolbar -->
+                <div class="border border-gray-300 rounded-t-lg bg-gray-50 p-3 flex flex-wrap items-center space-x-2">
+                    <button type="button" onclick="formatText('bold')" class="p-2 hover:bg-gray-200 rounded">
+                        <i class="fas fa-bold"></i>
+                    </button>
+                    <button type="button" onclick="formatText('italic')" class="p-2 hover:bg-gray-200 rounded">
+                        <i class="fas fa-italic"></i>
+                    </button>
+                    <button type="button" onclick="formatText('underline')" class="p-2 hover:bg-gray-200 rounded">
+                        <i class="fas fa-underline"></i>
+                    </button>
+                    <div class="border-l border-gray-300 h-6 mx-2"></div>
+                    <select onchange="changeFontSize(this.value)" class="px-2 py-1 border border-gray-300 rounded">
+                        <option value="12">12px</option>
+                        <option value="14" selected>14px</option>
+                        <option value="16">16px</option>
+                        <option value="18">18px</option>
+                        <option value="20">20px</option>
+                        <option value="24">24px</option>
+                    </select>
+                    <div class="border-l border-gray-300 h-6 mx-2"></div>
+                    <button type="button" onclick="generateSummary()" class="bg-accent text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 transition-colors">
+                        <i class="fas fa-robot mr-1"></i>AI Summary
+                    </button>
+                    <button type="button" onclick="improveContent()" class="bg-accent text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 transition-colors">
+                        <i class="fas fa-magic mr-1"></i>AI Improve
+                    </button>
+                    <button type="button" onclick="suggestKeywords()" class="bg-accent text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 transition-colors">
+                        <i class="fas fa-tags mr-1"></i>SEO Keywords
+                    </button>
+                </div>
+                
+                <textarea id="content" name="content" required rows="15"
+                          class="w-full px-4 py-3 border border-gray-300 border-t-0 rounded-b-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-none"
+                          placeholder="Write your amazing blog content here...">{{ post.content }}</textarea>
+            </div>
+
+            <!-- AI Suggestions Panel -->
+            <div id="ai-suggestions" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-semibold text-blue-800 mb-2">
+                    <i class="fas fa-robot mr-1"></i>AI Suggestions
+                </h3>
+                <div id="suggestions-content" class="text-blue-700"></div>
+            </div>
+
+            <!-- Publish Options -->
+            <div class="flex items-center space-x-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="is_published" {% if post.is_published %}checked{% endif %} class="mr-2 rounded border-gray-300 text-primary focus:ring-primary">
+                    <span class="text-sm font-medium text-gray-700">
+                        <i class="fas fa-eye mr-1"></i>Published
+                    </span>
+                </label>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                <a href="{{ url_for('dashboard') }}" class="text-gray-600 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left mr-1"></i>Back to Dashboard
+                </a>
+                
+                <div class="space-x-3">
+                    <button type="submit" 
+                            class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                        <i class="fas fa-save mr-2"></i>Update Post
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let contentEditor = document.getElementById('content');
+
+    function formatText(command) {
+        contentEditor.focus();
+        document.execCommand(command, false, null);
+    }
+
+    function changeFontSize(size) {
+        contentEditor.style.fontSize = size + 'px';
+    }
+
+    async function suggestHeadlines() {
+        const content = contentEditor.value;
+        if (!content.trim()) {
+            alert('Please write some content first to get AI headline suggestions.');
+            return;
+        }
+
+        showLoading('Getting AI headline suggestions...');
+        
+        try {
+            const response = await fetch('/ai/suggest-headline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.suggestions) {
+                showSuggestions('Headline Suggestions', data.suggestions);
+            } else {
+                alert('Error getting suggestions: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function generateSummary() {
+        const content = contentEditor.value;
+        if (!content.trim()) {
+            alert('Please write some content first to generate a summary.');
+            return;
+        }
+
+        showLoading('Generating AI summary...');
+        
+        try {
+            const response = await fetch('/ai/generate-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.summary) {
+                showSuggestions('AI Generated Summary', data.summary);
+            } else {
+                alert('Error generating summary: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function improveContent() {
+        const content = contentEditor.value;
+        if (!content.trim()) {
+            alert('Please write some content first to get AI improvements.');
+            return;
+        }
+
+        showLoading('AI is improving your content...');
+        
+        try {
+            const response = await fetch('/ai/improve-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.improved_content) {
+                showSuggestions('AI Improved Content', data.improved_content);
+            } else {
+                alert('Error improving content: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function suggestKeywords() {
+        const content = contentEditor.value;
+        if (!content.trim()) {
+            alert('Please write some content first to get SEO keyword suggestions.');
+            return;
+        }
+
+        showLoading('Generating SEO keywords...');
+        
+        try {
+            const response = await fetch('/ai/suggest-keywords', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.keywords) {
+                showSuggestions('SEO Keywords', data.keywords);
+            } else {
+                alert('Error getting keywords: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    function showLoading(message) {
+        const panel = document.getElementById('ai-suggestions');
+        const content = document.getElementById('suggestions-content');
+        
+        content.innerHTML = `
+            <div class="flex items-center">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                ${message}
+            </div>
+        `;
+        
+        panel.classList.remove('hidden');
+    }
+
+    function showSuggestions(title, suggestions) {
+        const panel = document.getElementById('ai-suggestions');
+        const content = document.getElementById('suggestions-content');
+        
+        content.innerHTML = `
+            <h4 class="font-medium mb-2">${title}</h4>
+            <div class="whitespace-pre-wrap text-sm">${suggestions}</div>
+            <button onclick="hideSuggestions()" class="mt-2 text-blue-600 hover:text-blue-800 text-sm">
+                <i class="fas fa-times mr-1"></i>Close
+            </button>
+        `;
+        
+        panel.classList.remove('hidden');
+    }
+
+    function hideSuggestions() {
+        document.getElementById('ai-suggestions').classList.add('hidden');
+    }
+</script>
+{% endblock %}

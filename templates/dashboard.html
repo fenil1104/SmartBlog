@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI BlogPlatform{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Welcome back, {{ session.user_name if session.user_name != 'User' else session.user_email }}!</h1>
+            <p class="text-gray-600 mt-1">Manage your blog posts and create amazing content</p>
+        </div>
+        <a href="{{ url_for('create_post') }}" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+            <i class="fas fa-plus mr-2"></i>New Post
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center">
+            <div class="bg-primary bg-opacity-10 p-3 rounded-lg">
+                <i class="fas fa-blog text-2xl text-primary"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm text-gray-600">Total Posts</p>
+                <p class="text-2xl font-bold text-gray-800">{{ posts|length }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center">
+            <div class="bg-green-100 p-3 rounded-lg">
+                <i class="fas fa-eye text-2xl text-green-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm text-gray-600">Published</p>
+                <p class="text-2xl font-bold text-gray-800">{{ posts|selectattr('published')|list|length }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center">
+            <div class="bg-yellow-100 p-3 rounded-lg">
+                <i class="fas fa-edit text-2xl text-yellow-600"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm text-gray-600">Drafts</p>
+                <p class="text-2xl font-bold text-gray-800">{{ posts|rejectattr('published')|list|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Blog Posts -->
+<div class="bg-white rounded-xl shadow-lg">
+    <div class="p-6 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-800">Your Blog Posts</h2>
+    </div>
+    
+    {% if posts %}
+        <div class="divide-y divide-gray-200">
+            {% for post in posts %}
+                <div class="p-6 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    <a href="{{ url_for('view_post', post_id=post.id) }}" class="hover:text-primary transition-colors">
+                                        {{ post.title }}
+                                    </a>
+                                </h3>
+                                {% if post.published %}
+                                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                        <i class="fas fa-eye mr-1"></i>Published
+                                    </span>
+                                {% else %}
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                                        <i class="fas fa-edit mr-1"></i>Draft
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-gray-600 mb-2 line-clamp-2">{{ post.content[:100] }}...</p>
+                            
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span>
+                                    <i class="fas fa-calendar mr-1"></i>
+                                    {{ post.created_at[:10] }}
+                                </span>
+                                {% if post.cover_image_url %}
+                                    <span>
+                                        <i class="fas fa-image mr-1"></i>
+                                        Has cover image
+                                    </span>
+                                {% endif %}
+                                {% if post.video_links and post.video_links|length > 0 %}
+                                    <span>
+                                        <i class="fas fa-video mr-1"></i>
+                                        Has video
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2 ml-4">
+                            <a href="{{ url_for('view_post', post_id=post.id) }}" 
+                               class="text-gray-600 hover:text-primary p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                               title="View Post">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('edit_post', post_id=post.id) }}" 
+                               class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                               title="Edit Post">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="inline"
+                                  onsubmit="return confirm('Are you sure you want to delete this post?')">
+                                <button type="submit" 
+                                        class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                        title="Delete Post">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="p-12 text-center">
+            <i class="fas fa-blog text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-600 mb-2">No blog posts yet</h3>
+            <p class="text-gray-500 mb-6">Start creating amazing content with AI assistance!</p>
+            <a href="{{ url_for('create_post') }}" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                <i class="fas fa-plus mr-2"></i>Create Your First Post
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
