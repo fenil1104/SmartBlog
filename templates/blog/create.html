@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Create Post - AI BlogPlatform{% endblock %}
+
+{% block head %}
+<style>
+    #content-editor.empty:before {
+        content: attr(data-placeholder);
+        color: #9CA3AF;
+        pointer-events: none;
+    }
+    
+    #content-editor:focus {
+        outline: none;
+    }
+    
+    #content-editor p {
+        margin: 0.5em 0;
+    }
+    
+    #content-editor ul, #content-editor ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Create New Blog Post</h1>
+            <p class="text-gray-600">Use AI assistance to create amazing content</p>
+            {% if suggestions %}
+            <div class="bg-blue-100 border border-blue-300 text-blue-800 p-4 rounded-lg mb-6">
+                <h2 class="font-semibold text-lg mb-2">
+                    <i class="fas fa-lightbulb mr-1"></i> AI Suggestions
+                </h2>
+                <pre class="whitespace-pre-wrap">{{ suggestions }}</pre>
+            </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <!-- Title -->
+            <div>
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-heading mr-1"></i>Title
+                </label>
+                <div class="flex space-x-2">
+                    <input type="text" id="title" name="title" required
+                           class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                           placeholder="Enter your blog post title">
+                    <button type="button" onclick="suggestHeadlines()" 
+                            class="bg-accent text-white px-4 py-3 rounded-lg hover:bg-yellow-600 transition-colors">
+                        <i class="fas fa-robot mr-1"></i>AI Suggest
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cover Image -->
+            <div>
+                <label for="cover_image" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-image mr-1"></i>Cover Image
+                </label>
+                <input type="file" id="cover_image" name="cover_image" accept="image/*"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors">
+            </div>
+
+            <!-- Video URL -->
+            <div>
+                <label for="video_url" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-video mr-1"></i>Video URL (Optional)
+                </label>
+                <input type="url" id="video_url" name="video_url"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                       placeholder="https://youtube.com/watch?v=...">
+            </div>
+
+            <!-- Content Editor -->
+            <div>
+                <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-edit mr-1"></i>Content
+                </label>
+                
+                <!-- Editor Toolbar -->
+                <div class="border border-gray-300 rounded-t-lg bg-gray-50 p-3 flex flex-wrap items-center space-x-2">
+                    <button type="button" onclick="formatText('bold')" class="p-2 hover:bg-gray-200 rounded" title="Bold">
+                        <i class="fas fa-bold"></i>
+                    </button>
+                    <button type="button" onclick="formatText('italic')" class="p-2 hover:bg-gray-200 rounded" title="Italic">
+                        <i class="fas fa-italic"></i>
+                    </button>
+                    <button type="button" onclick="formatText('underline')" class="p-2 hover:bg-gray-200 rounded" title="Underline">
+                        <i class="fas fa-underline"></i>
+                    </button>
+                    <button type="button" onclick="formatText('insertUnorderedList')" class="p-2 hover:bg-gray-200 rounded" title="Bullet List">
+                        <i class="fas fa-list-ul"></i>
+                    </button>
+                    <button type="button" onclick="formatText('insertOrderedList')" class="p-2 hover:bg-gray-200 rounded" title="Numbered List">
+                        <i class="fas fa-list-ol"></i>
+                    </button>
+                    <div class="border-l border-gray-300 h-6 mx-2"></div>
+                    <select onchange="changeFontSize(this.value)" class="px-2 py-1 border border-gray-300 rounded">
+                        <option value="12">12px</option>
+                        <option value="14" selected>14px</option>
+                        <option value="16">16px</option>
+                        <option value="18">18px</option>
+                        <option value="20">20px</option>
+                        <option value="24">24px</option>
+                    </select>
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" onclick="generateSummary()" 
+                                class="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="summary-btn">
+                            <i class="fas fa-robot mr-2"></i>AI Summary
+                        </button>
+                        <button type="button" onclick="suggestKeywords()" 
+                                class="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="keywords-btn">
+                            <i class="fas fa-tags mr-2"></i>SEO Keywords
+                        </button>
+                        <button type="button" onclick="improveContent()" 
+                                class="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                id="improve-btn">
+                            <i class="fas fa-magic mr-2"></i>Improve Content
+                        </button>
+                        <button type="button" onclick="clearSuggestions()" 
+                                class="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                                id="clear-btn">
+                            <i class="fas fa-times mr-2"></i>Clear
+                        </button>
+                    </div>
+                    
+                    <!-- Rich Text Editor -->
+                    <div id="content-editor" contenteditable="true" 
+                         class="w-full px-4 py-3 border border-gray-300 border-t-0 rounded-b-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors min-h-96 max-h-96 overflow-y-auto"
+                         style="font-size: 14px;"
+                         data-placeholder="Write your amazing blog content here...">
+                    </div>
+                    
+                    <!-- Hidden textarea to store content for form submission -->
+                    <textarea id="content" name="content" required class="hidden"></textarea>
+                </div>
+
+                <!-- AI Suggestions Panel -->
+                <div id="ai-suggestions" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 class="font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-robot mr-1"></i>AI Suggestions
+                    </h3>
+                    <div id="suggestions-content" class="text-blue-700"></div>
+                </div>
+
+
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                    <a href="{{ url_for('dashboard') }}" class="text-gray-600 hover:text-gray-800 transition-colors">
+                        <i class="fas fa-arrow-left mr-1"></i>Back to Dashboard
+                    </a>
+                    
+                    <div class="space-x-3">
+                        <button type="submit" name="action" value="draft" 
+                                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Save as Draft
+                        </button>
+                        <button type="submit" name="action" value="publish" 
+                                class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                            <i class="fas fa-paper-plane mr-2"></i>Create Post
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let contentEditor = document.getElementById('content-editor');
+    let hiddenTextarea = document.getElementById('content');
+
+    // Initialize editor
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show placeholder when empty
+        updatePlaceholder();
+        
+        // Update hidden textarea when content changes
+        contentEditor.addEventListener('input', function() {
+            hiddenTextarea.value = contentEditor.innerHTML;
+            updatePlaceholder();
+        });
+        
+        // Handle form submission
+        document.querySelector('form').addEventListener('submit', function() {
+            hiddenTextarea.value = contentEditor.innerHTML;
+        });
+    });
+
+    function updatePlaceholder() {
+        if (contentEditor.textContent.trim() === '') {
+            contentEditor.classList.add('empty');
+        } else {
+            contentEditor.classList.remove('empty');
+        }
+    }
+
+    function formatText(command) {
+        contentEditor.focus();
+        document.execCommand(command, false, null);
+        hiddenTextarea.value = contentEditor.innerHTML;
+    }
+
+    function changeFontSize(size) {
+        contentEditor.style.fontSize = size + 'px';
+    }
+
+    async function suggestHeadlines() {
+        const content = contentEditor.textContent || contentEditor.innerText;
+        if (!content.trim()) {
+            alert('Please write some content first to get AI headline suggestions.');
+            return;
+        }
+
+        showLoading('Getting AI headline suggestions...');
+        
+        try {
+            const response = await fetch('/ai/suggest-headline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.suggestions) {
+                showSuggestions('Headline Suggestions', data.suggestions);
+            } else {
+                alert('Error getting suggestions: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function generateSummary() {
+        const content = contentEditor.textContent || contentEditor.innerText;
+        if (!content.trim()) {
+            showToast('Please write some content first to generate a summary.', 'warning');
+            return;
+        }
+
+        showLoading('Generating AI summary...');
+        
+        try {
+            const response = await fetch('/ai/generate-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate summary');
+            }
+            
+            if (data.summary) {
+                showSuggestions('AI Generated Summary', data.summary);
+            } else {
+                throw new Error('No summary generated');
+            }
+        } catch (error) {
+            console.error('Summary generation error:', error);
+            showToast(`Error: ${error.message || 'Failed to generate summary'}`, 'error');
+            hideSuggestions();
+        }
+    }
+    
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${
+            type === 'error' ? 'bg-red-500' : 
+            type === 'success' ? 'bg-green-500' :
+            'bg-blue-500'
+        }`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+            setTimeout(() => toast.remove(), 500);
+        }, 5000);
+    }
+
+    async function improveContent() {
+        const content = contentEditor.textContent || contentEditor.innerText;
+        if (!content.trim()) {
+            alert('Please write some content first to get AI improvements.');
+            return;
+        }
+
+        showLoading('AI is improving your content...');
+        
+        try {
+            const response = await fetch('/ai/improve-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.improved_content) {
+                showSuggestions('AI Improved Content', data.improved_content);
+            } else {
+                alert('Error improving content: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function suggestKeywords() {
+        const content = contentEditor.textContent || contentEditor.innerText;
+        if (!content.trim()) {
+            alert('Please write some content first to get SEO keyword suggestions.');
+            return;
+        }
+
+        showLoading('Generating SEO keywords...');
+        
+        try {
+            const response = await fetch('/ai/suggest-keywords', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            const data = await response.json();
+            
+            if (data.keywords) {
+                showSuggestions('SEO Keywords', data.keywords);
+            } else {
+                alert('Error getting keywords: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    function setButtonsLoading(isLoading) {
+        const buttons = ['summary-btn', 'keywords-btn', 'improve-btn'];
+        buttons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = isLoading;
+                const icon = btn.querySelector('i');
+                if (isLoading) {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    icon.className = 'fas fa-spinner fa-spin mr-2';
+                } else {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    // Reset icons based on button type
+                    if (btnId === 'summary-btn') icon.className = 'fas fa-robot mr-2';
+                    else if (btnId === 'keywords-btn') icon.className = 'fas fa-tags mr-2';
+                    else if (btnId === 'improve-btn') icon.className = 'fas fa-magic mr-2';
+                }
+            }
+        });
+    }
+
+    function showLoading(message) {
+        const panel = document.getElementById('ai-suggestions');
+        const content = document.getElementById('suggestions-content');
+        
+        content.innerHTML = `
+            <div class="flex items-center">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                ${message}
+            </div>
+        `;
+        
+        panel.classList.remove('hidden');
+        setButtonsLoading(true);
+    }
+
+    function showSuggestions(title, suggestions) {
+        const panel = document.getElementById('ai-suggestions');
+        const content = document.getElementById('suggestions-content');
+        
+        // Create a temporary div to handle the content safely
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = suggestions;
+        const sanitizedContent = tempDiv.textContent || tempDiv.innerText || '';
+        
+        content.innerHTML = `
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+                    <button onclick="hideSuggestions()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="prose max-w-none bg-gray-50 p-4 rounded border border-gray-200 overflow-auto max-h-60">
+                    ${sanitizedContent.replace(/\n/g, '<br>')}
+                </div>
+                <div class="mt-3 flex justify-between items-center">
+                    <button onclick="applySuggestion('${sanitizedContent.replace(/['\n]/g, '\\$&')}')" 
+                            class="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                        <i class="fas fa-check mr-1"></i>Apply to Content
+                    </button>
+                    <span class="text-xs text-gray-500">AI-generated content</span>
+                </div>
+            </div>
+        `;
+        
+        panel.classList.remove('hidden');
+        setButtonsLoading(false);
+    }
+
+    function hideSuggestions() {
+        const panel = document.getElementById('ai-suggestions');
+        panel.classList.add('hidden');
+        setButtonsLoading(false);
+    }
+    
+    function applySuggestion(suggestion) {
+        if (suggestion) {
+            contentEditor.innerHTML = suggestion.replace(/\\n/g, '<br>');
+            hiddenTextarea.value = contentEditor.innerHTML;
+            updatePlaceholder();
+            hideSuggestions();
+        }
+    }
+    
+    function clearSuggestions() {
+        const panel = document.getElementById('ai-suggestions');
+        const content = document.getElementById('suggestions-content');
+        content.innerHTML = '';
+        panel.classList.add('hidden');
+        setButtonsLoading(false);
+    }
+</script>
+{% endblock %}

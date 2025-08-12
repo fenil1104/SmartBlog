@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI BlogPlatform{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#1E40AF',
+                        accent: '#F59E0B'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="{{ url_for('home') }}" class="flex items-center space-x-2">
+                        <i class="fas fa-blog text-2xl text-primary"></i>
+                        <span class="text-xl font-bold text-gray-800">AI BlogPlatform</span>
+                    </a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('home') }}" class="text-gray-600 hover:text-primary transition-colors">
+                        <i class="fas fa-home mr-1"></i>Home
+                    </a>
+                    
+                    {% if session.user_id %}
+                        <a href="{{ url_for('dashboard') }}" class="text-gray-600 hover:text-primary transition-colors">
+                            <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('create_post') }}" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition-colors">
+                            <i class="fas fa-plus mr-1"></i>New Post
+                        </a>
+                        {% if session.is_admin %}
+                            <a href="{{ url_for('admin_dashboard') }}" class="text-accent hover:text-yellow-600 transition-colors">
+                                <i class="fas fa-cog mr-1"></i>Admin
+                            </a>
+                        {% endif %}
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="flex items-center space-x-2 text-gray-600 hover:text-primary transition-colors">
+                                <i class="fas fa-user-circle text-xl"></i>
+                                <span>{{ session.user_email }}</span>
+                                <i class="fas fa-chevron-down text-sm"></i>
+                            </button>
+                            <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2">
+                                <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-user-cog mr-2"></i>My Profile
+                                </a>
+                                <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="text-gray-600 hover:text-primary transition-colors">Login</a>
+                        <a href="{{ url_for('register') }}" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition-colors">Sign Up</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-100 border border-red-400 text-red-700{% elif category == 'success' %}bg-green-100 border border-green-400 text-green-700{% elif category == 'info' %}bg-blue-100 border border-blue-400 text-blue-700{% else %}bg-yellow-100 border border-yellow-400 text-yellow-700{% endif %}">
+                        <div class="flex items-center">
+                            {% if category == 'error' %}
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                            {% elif category == 'success' %}
+                                <i class="fas fa-check-circle mr-2"></i>
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Modern AI Chatbot Widget (Only for logged-in users) -->
+    {% if session.user_id %}
+    <div id="chatbot-container" class="fixed bottom-6 right-6 z-50">
+        <!-- Chatbot Toggle Button -->
+        <button id="chatbot-toggle" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300">
+            <i id="chatbot-icon" class="fas fa-robot text-xl"></i>
+            <span id="notification-dot" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden animate-pulse">!</span>
+        </button>
+
+        <!-- Chatbot Window -->
+        <div id="chatbot-window" class="absolute bottom-20 right-0 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 transform scale-0 origin-bottom-right transition-all duration-300 opacity-0 pointer-events-none">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-t-2xl flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-sm">AI Assistant</h3>
+                        <p class="text-xs opacity-90">Online • Ready to help</p>
+                    </div>
+                </div>
+                <button id="chatbot-close" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="flex-1 p-4 h-80 overflow-y-auto space-y-3 bg-gray-50">
+                <!-- Welcome Message -->
+                <div class="flex items-start space-x-2">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-robot text-white text-xs"></i>
+                    </div>
+                    <div class="bg-white rounded-2xl rounded-tl-md p-3 shadow-sm max-w-xs">
+                        <p class="text-sm text-gray-800">👋 Hi {{ session.user_name or 'there' }}! I'm your AI assistant. How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div id="quick-actions" class="px-4 py-2 border-t border-gray-100">
+                <div class="flex flex-wrap gap-2">
+                    <button class="quick-action-btn bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs hover:bg-blue-200 transition-colors" data-action="help">📝 Writing Help</button>
+                    <button class="quick-action-btn bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs hover:bg-green-200 transition-colors" data-action="guide">🗺️ Platform Guide</button>
+                    <button class="quick-action-btn bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs hover:bg-purple-200 transition-colors" data-action="tips">💡 Tips</button>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 border-t border-gray-100">
+                <div class="flex items-center space-x-2">
+                    <input id="chat-input" type="text" placeholder="Type your message..." class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <button id="send-message" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <i id="send-icon" class="fas fa-paper-plane text-sm"></i>
+                        <i id="loading-icon" class="fas fa-spinner fa-spin text-sm hidden"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center">
+                <p>&copy; 2024 AI BlogPlatform. Powered by AI and built by Fenil</p>
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+
+    <!-- Modern Chatbot JavaScript (Only for logged-in users) -->
+    {% if session.user_id %}
+    <script>
+    class ModernChatbot {
+        constructor() {
+            this.isOpen = false;
+            this.isTyping = false;
+            this.inactivityTimer = null;
+            this.lastActivity = Date.now();
+            this.initializeElements();
+            this.bindEvents();
+            this.startInactivityMonitoring();
+        }
+
+        initializeElements() {
+            this.toggleBtn = document.getElementById('chatbot-toggle');
+            this.window = document.getElementById('chatbot-window');
+            this.closeBtn = document.getElementById('chatbot-close');
+            this.messagesContainer = document.getElementById('chat-messages');
+            this.input = document.getElementById('chat-input');
+            this.sendBtn = document.getElementById('send-message');
+            this.sendIcon = document.getElementById('send-icon');
+            this.loadingIcon = document.getElementById('loading-icon');
+            this.notificationDot = document.getElementById('notification-dot');
+            this.quickActionBtns = document.querySelectorAll('.quick-action-btn');
+        }
+
+        bindEvents() {
+            this.toggleBtn.addEventListener('click', () => this.toggleChat());
+            this.closeBtn.addEventListener('click', () => this.closeChat());
+            this.sendBtn.addEventListener('click', () => this.sendMessage());
+            this.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.sendMessage();
+                this.updateActivity();
+            });
+            
+            // Quick action buttons
+            this.quickActionBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.dataset.action;
+                    this.handleQuickAction(action);
+                });
+            });
+
+            // Track user activity
+            document.addEventListener('mousemove', () => this.updateActivity());
+            document.addEventListener('keypress', () => this.updateActivity());
+            document.addEventListener('click', () => this.updateActivity());
+        }
+
+        toggleChat() {
+            if (this.isOpen) {
+                this.closeChat();
+            } else {
+                this.openChat();
+            }
+        }
+
+        openChat() {
+            this.isOpen = true;
+            this.window.classList.remove('scale-0', 'opacity-0', 'pointer-events-none');
+            this.window.classList.add('scale-100', 'opacity-100');
+            this.input.focus();
+            this.hideNotification();
+        }
+
+        closeChat() {
+            this.isOpen = false;
+            this.window.classList.add('scale-0', 'opacity-0', 'pointer-events-none');
+            this.window.classList.remove('scale-100', 'opacity-100');
+        }
+
+        async sendMessage() {
+            const message = this.input.value.trim();
+            if (!message || this.isTyping) return;
+
+            this.addUserMessage(message);
+            this.input.value = '';
+            this.setTyping(true);
+
+            try {
+                const response = await fetch('/ai/chatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                
+                if (data.response) {
+                    this.addBotMessage(data.response);
+                } else {
+                    this.addBotMessage('Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                console.error('Chatbot error:', error);
+                this.addBotMessage('Sorry, I\'m having trouble connecting. Please try again.');
+            } finally {
+                this.setTyping(false);
+            }
+        }
+
+        addUserMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-2 justify-end';
+            messageDiv.innerHTML = `
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl rounded-tr-md p-3 shadow-sm max-w-xs">
+                    <p class="text-sm">${this.escapeHtml(message)}</p>
+                </div>
+                <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-user text-gray-600 text-xs"></i>
+                </div>
+            `;
+            this.messagesContainer.appendChild(messageDiv);
+            this.scrollToBottom();
+        }
+
+        addBotMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-2';
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-robot text-white text-xs"></i>
+                </div>
+                <div class="bg-white rounded-2xl rounded-tl-md p-3 shadow-sm max-w-xs">
+                    <p class="text-sm text-gray-800">${this.escapeHtml(message)}</p>
+                </div>
+            `;
+            this.messagesContainer.appendChild(messageDiv);
+            this.scrollToBottom();
+        }
+
+        setTyping(isTyping) {
+            this.isTyping = isTyping;
+            if (isTyping) {
+                this.sendIcon.classList.add('hidden');
+                this.loadingIcon.classList.remove('hidden');
+                this.sendBtn.disabled = true;
+            } else {
+                this.sendIcon.classList.remove('hidden');
+                this.loadingIcon.classList.add('hidden');
+                this.sendBtn.disabled = false;
+            }
+        }
+
+        handleQuickAction(action) {
+            const actions = {
+                help: "I can help you write better blog posts! I can suggest headlines, improve content, generate summaries, and provide SEO keywords. What would you like help with?",
+                guide: "Here's what you can do on this platform:\n\n📝 Create and edit blog posts\n📊 View your dashboard\n👤 Manage your profile\n🤖 Use AI writing assistance\n\nWhat would you like to explore?",
+                tips: "💡 Here are some quick tips:\n\n• Use compelling headlines to attract readers\n• Break up long paragraphs for better readability\n• Add relevant images to your posts\n• Use the AI suggestions for better content\n• Engage with your audience through comments\n\nNeed help with any of these?"
+            };
+            
+            if (actions[action]) {
+                this.addBotMessage(actions[action]);
+            }
+        }
+
+        startInactivityMonitoring() {
+            setInterval(() => {
+                const timeSinceActivity = Date.now() - this.lastActivity;
+                // Show proactive help after 2 minutes of inactivity
+                if (timeSinceActivity > 120000 && !this.isOpen) {
+                    this.showProactiveHelp();
+                }
+            }, 30000); // Check every 30 seconds
+        }
+
+        updateActivity() {
+            this.lastActivity = Date.now();
+        }
+
+        showProactiveHelp() {
+            this.showNotification();
+            // Add a helpful message to the chat
+            setTimeout(() => {
+                if (!this.isOpen) {
+                    this.addBotMessage("👋 I noticed you might need some help! I'm here to assist you with writing, navigating the platform, or answering any questions you have.");
+                }
+            }, 1000);
+        }
+
+        showNotification() {
+            this.notificationDot.classList.remove('hidden');
+        }
+
+        hideNotification() {
+            this.notificationDot.classList.add('hidden');
+        }
+
+        scrollToBottom() {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }
+
+    // Initialize the chatbot when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        new ModernChatbot();
+    });
+    </script>
+    {% endif %}
+</body>
+</html>
