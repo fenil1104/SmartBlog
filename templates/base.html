@@ -155,7 +155,10 @@
             <!-- Input Area -->
             <div class="p-4 border-t border-gray-100">
                 <div class="flex items-center space-x-2">
-                    <input id="chat-input" type="text" placeholder="Type your message..." class="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input id="chat-input" type="text" placeholder="Ask me anything..." class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400">
+                    <button id="mic-btn" class="p-2 text-gray-500 hover:text-primary transition-colors">
+                        <i class="fas fa-microphone"></i>
+                    </button>
                     <button id="send-message" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         <i id="send-icon" class="fas fa-paper-plane text-sm"></i>
                         <i id="loading-icon" class="fas fa-spinner fa-spin text-sm hidden"></i>
@@ -198,6 +201,7 @@
             this.messagesContainer = document.getElementById('chat-messages');
             this.input = document.getElementById('chat-input');
             this.sendBtn = document.getElementById('send-message');
+            this.micBtn = document.getElementById('mic-btn');
             this.sendIcon = document.getElementById('send-icon');
             this.loadingIcon = document.getElementById('loading-icon');
             this.notificationDot = document.getElementById('notification-dot');
@@ -208,7 +212,8 @@
             this.toggleBtn.addEventListener('click', () => this.toggleChat());
             this.closeBtn.addEventListener('click', () => this.closeChat());
             this.sendBtn.addEventListener('click', () => this.sendMessage());
-            this.input.addEventListener('keypress', (e) => {
+            this.micBtn.addEventListener('click', () => this.startSpeechRecognition());
+            this.input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') this.sendMessage();
                 this.updateActivity();
             });
@@ -370,6 +375,35 @@
 
         scrollToBottom() {
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }
+
+        startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                this.addBotMessage("Sorry, your browser doesn't support voice recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            this.micBtn.innerHTML = '<i class="fas fa-microphone-alt text-red-500 animate-pulse"></i>';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                this.input.value = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                this.addBotMessage(`Error in speech recognition: ${event.error}`);
+            };
+
+            recognition.onend = () => {
+                this.micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            };
+
+            recognition.start();
         }
 
         escapeHtml(text) {
